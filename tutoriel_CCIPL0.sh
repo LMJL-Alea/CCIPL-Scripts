@@ -1,20 +1,55 @@
 
-module purge # nettoie tous les modules chargés
-
-# charge les modules necessaire pour fair tourner mon code 
-module load python/3.7.4 
-module load cuda/9.2.148
-module load gcc/10.1
-module load cmake/3.10.2
-
-
-echo c est parti
-partition="SMP-short" # SMP-short GPU-short GPU-med Devel
+# paramètres pour la requete sbatch
+partition="SMP-short" # voir https://doc.ccipl.univ-nantes.fr/CCIPL-PUBLIC/stable/technique/technique.html#_partitionnement
 t="06:00:00" # temps maximal que devrait durer le run
 
-# parametres booleens
-bootstrap=false
-sc=true
+# divers paramètres 
+diroutput=/scratch/LMJL/ozier-lafontaine-a/outputs # dossier dans lequel on enregistre les resultats
+int1=10
+int2=43
+n_jobs="10" # nombre de job paralleles sur un noeud 
+# Quand un job nécessite beaucoup de paramètres, une solution consiste à rassembler les paramètres par types
+# pour ça, on peut utiliser le format nom1:valeur1+nom2:valeur2...
+bool=booleen1:true+booleen2:false
+str=string1:hello+string2:world+diroutput:${diroutput}
+int=int1:${int1}+int2:${int2}+n_jobs:${n_jobs}
+
+
+
+
+# Dans cet exemple, on souhaite répéter la même simulation pour 100 seed differentes. 
+# On va utiliser un noeud par lot de 10 seeds.
+# Dans chaque noeud, on réparti les 10 calculs sur 10 coeurs
+
+seeds=$(seq 0 10 100) # une liste de 0 à 100 avec un pas de 10 
+
+
+
+for seed in $seeds
+do
+    # pour chaque valeur de seed, une requête sbatch demande l'accès à un noeud sur lequel 10 jobs vont tourner en parallèle. 
+    jobname=seed${seed}_${partition}_nj${nj} # idealement le jobname contient toutes les infos nécessaires pour refaire tourner exactement le même job si besoin (reproductibilité)
+    int=${int}+seed:${seed} # ajoute seed à int 
+        if [ ! -e ${diroutput}${jobname} ]; then # vérification que le fichier à créer n'existe pas déjà 
+
+            #              params de la commande sbatch           script lu par le noeud           paramètres du script lu par le noeud                 fichier de logs (print et erreurs)
+            #     |--------------------------------------------|--------------------------|-----------------------------------------------------------|-------------------------------| 
+            sbatch --job-name=${jobname} --time=$t -p $partition ${path}tutoriel_CCIPL1.sh $path $diroutput $jobname $njobs $partition $int $bool $str >log_${jobname}seed${seed} 2>&1
+            echo le job correspondant a seed ${seed} est soumis 
+            
+        fi
+    fi
+done
+
+
+
+path=/home/LMJL/ozier-lafontaine-a/
+pathsc=/home/LMJL/ozier-lafontaine-a/human_cell_atlas_loom/
+diroutput=/scratch/LMJL/ozier-lafontaine-a/outputs
+mkdir -p ${diroutput}
+
+
+
 
 # si tu veux tester le code sur ta machine avant de l'envoyer ça peut servir 
 echo $PWD
