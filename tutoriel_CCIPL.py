@@ -1,56 +1,39 @@
 # #!/trinity/shared/apps/cv-standard/python/3.7.4/bin/python3.7
 # # SBATCH --nodes=2 
-# # SBATCH --ntasks-per-node=20 
 # # SBATCH --exclusive   
 # # SBATCH --mail-user=anthony.ozier-lafontaine@ec-nantes.fr 
 # # SBATCH --mail-type=abort,end  
 # # SBATCH -o job_python-%j.out 
 
-import multiprocessing
 from time import time
+from joblib import parallel_backend
+from joblib import Parallel, delayed
+from joblib.externals.loky import set_loky_pickler
 
-# voilà comment je récupère des fonctions que j'ai codées dans 
-# les fichiers get_params.py et simulations.py, rangés 
-# dans le dossier '/home/LMJL/ozier-lafontaine-a/kfdapy'
+# on peut récuperer des fonctions codées dans un autre fichier si on est dans le bon dossier 
 import os 
-if os.getcwd() == '/home/LMJL/ozier-lafontaine-a':
-    os.chdir('/home/LMJL/ozier-lafontaine-a/kfdapy')
+os.chdir('/home/LMJL/ozier-lafontaine-a/CCIPL-SCRIPTS/')
 from get_params import get_params
-from simulations import parallel_single_cell_kfda_all_sample, parallel_simu, simu_kfda
 
 
 if __name__ == '__main__':
 
-    # la fonction get_params lit les paramètres rangés dans la liste de paramètres que j'avais appelée $bool 
+    print('cette phrase sera écrite dans le fichier de logs specifié dans tutoriel_CCIPL1.sh')
+    print("pour effacer tous les fichiers logs d'un coup: rm *test_ccipl_log_python*")
+
+
     key = get_params()
-    
-    
-    # une fois que j'ai récupéré tous les paramètres, le reste est un script python normal. 
-    for k,v in key.items():
-        print(k,v)
+    n_jobs = key['n_jobs']
 
-    nj = key['nj']
-    if 'sc' in key and key['sc'] == True:
-        # single_cell_kfda(key)
-        parallel_single_cell_kfda_all_sample(key,nj)
-        # print('en travaux')
-    elif 'test' in key and key['test'] == True:
-        if 'parallel' in key and key['parallel'] == True:
-            start = time()
-            parallel_simu(key,nj)
-            print('parallel_test:',time() - start)
-        else:
-            start = time()
-            simu_kfda(key)
-            print('not_parallel_test:',time() - start)
+    def a_paralleliser(key,seed):
+        seed = key['seed'] # récupère la seed
+        str1,str2 = key['string1'],key['string2'] # récupère d'autres paramètres 
+        print(f"seed{seed}   {str1} {str2}")
+        return(seed)
 
-    else: 
 
-        # start = time()
-        # simu_kfda(key)
-        # print('simu_kfda:',time() - start)
-        
-        start = time()
-        parallel_simu(key,nj)
-        print('parallel_simu:',time() - start)
-    
+    with parallel_backend('loky'):
+        a = Parallel(n_jobs=n_jobs)(delayed(a_paralleliser)(key,seed_i) for seed_i  in range(key['seed'],key['seed']+11) )
+
+
+    # a contient la liste des seed utilisées si on avait généré des données, on pourrait les écrire dans key['diroutput']
