@@ -17,7 +17,6 @@ module load python/3.7.4
 
 # je récupère les paramètres reçus par le script dans l'ordre où ils ont été indiqués dans tutoriel_CCIPL0.sh
 
-$path $diroutput $jobname $njobs $partition $int $bool $str
 path=$1
 diroutput=$2
 jobname=$3
